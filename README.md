@@ -81,4 +81,6 @@ int main()
 }
 ```
 
-Here is an [example usage](https://ecewo.vercel.app/docs/async-operations/#async-postgres-queries) with [Ecewo](https://github.com/savashn/ecewo), which is a minimalist C framework based on libuv.
+## Advanced Usage
+
+Here is an [advanced example usage](https://ecewo.vercel.app/docs/async-operations/#async-postgres-queries) with [Ecewo](https://github.com/savashn/ecewo), which is a minimalist C framework based on libuv.
