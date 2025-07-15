@@ -14,6 +14,18 @@ static void cleanup_query(pg_query_t *query);
 static void handle_error(pg_async_t *pg, const char *error);
 static void pg_async_destroy(pg_async_t *pg);
 
+static void on_handle_closed(uv_handle_t *handle)
+{
+    pg_async_t *pg = (pg_async_t *)handle->data;
+    if (pg)
+    {
+        // Free resources only after handle is fully closed
+        if (pg->error_message)
+            free(pg->error_message);
+        free(pg);
+    }
+}
+
 // Create new async PostgreSQL context
 pg_async_t *pquv_create(PGconn *existing_conn, void *data)
 {
@@ -35,6 +47,8 @@ pg_async_t *pquv_create(PGconn *existing_conn, void *data)
         printf("pquv_create: Failed to allocate memory\n");
         return NULL;
     }
+
+    pg->destroying = 0;
 
     // Use existing connection
     pg->conn = existing_conn;
@@ -195,23 +209,40 @@ static void pg_async_cancel(pg_async_t *pg)
 // Destroy context and free resources
 static void pg_async_destroy(pg_async_t *pg)
 {
-    if (!pg)
+    if (!pg || pg->destroying)
         return;
 
+    pg->destroying = 1;
     pg_async_cancel(pg);
 
-    // Only close connection if we own it
     if (pg->conn && pg->owns_connection)
     {
         PQfinish(pg->conn);
+        pg->conn = NULL;
     }
 
-    if (pg->error_message)
+    int handle_initialized = 0;
+#ifdef _WIN32
+    handle_initialized = (pg->timer.type != UV_UNKNOWN_HANDLE);
+    if (handle_initialized && !uv_is_closing((uv_handle_t *)&pg->timer))
     {
-        free(pg->error_message);
+        uv_close((uv_handle_t *)&pg->timer, on_handle_closed);
     }
+#else
+    handle_initialized = (pg->poll.type != UV_UNKNOWN_HANDLE);
+    if (handle_initialized && !uv_is_closing((uv_handle_t *)&pg->poll))
+    {
+        uv_close((uv_handle_t *)&pg->poll, on_handle_closed);
+    }
+#endif
 
-    free(pg);
+    // Free immediately if handle was never initialized
+    if (!handle_initialized)
+    {
+        if (pg->error_message)
+            free(pg->error_message);
+        free(pg);
+    }
 }
 
 // Execute the next query in the queue
@@ -320,6 +351,9 @@ static void on_timer(uv_timer_t *handle)
 
     pg_async_t *pg = (pg_async_t *)handle->data;
 
+    if (pg->destroying)
+        return;
+
     // Consume input from the connection
     if (!PQconsumeInput(pg->conn))
     {
@@ -377,6 +411,9 @@ static void on_poll(uv_poll_t *handle, int status, int events)
     }
 
     pg_async_t *pg = (pg_async_t *)handle->data;
+
+    if (pg->destroying)
+        return;
 
     if (status < 0)
     {

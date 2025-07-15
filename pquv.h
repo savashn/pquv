@@ -49,6 +49,7 @@ struct pg_async_s
 
     // Error message storage
     char *error_message;
+    int destroying;
 };
 
 // Create new async PostgreSQL context (full interface)
@@ -67,4 +68,4 @@ int pquv_queue(pg_async_t *pg,
 // Note: Context will automatically cleanup when execution completes
 int pquv_execute(pg_async_t *pg);
 
-#endif // PQUV_H
+#endif
