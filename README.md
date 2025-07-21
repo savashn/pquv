@@ -16,7 +16,7 @@ A library that integrates [libpq](https://www.postgresql.org/docs/current/libpq.
 // PostgreSQL connection info
 #define PG_CONNINFO "host=localhost user=postgres dbname=postgres password=yourpassword"
 
-// Callback: Sorgu sonucu geldiğinde çalışır
+// Callback
 void on_result(pg_async_t *pg, PGresult *result, void *data)
 {
     ExecStatusType status = PQresultStatus(result);
