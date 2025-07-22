@@ -301,7 +301,7 @@ static void execute_next_query(pg_async_t *pg)
     }
 
     // Check if we're being shut down
-    extern volatile int shutdown_requested;
+    extern int shutdown_requested;
     if (shutdown_requested)
     {
         pg->is_executing = 0;
@@ -410,7 +410,7 @@ static void on_timer(uv_timer_t *handle)
     pg_async_t *pg = (pg_async_t *)handle->data;
 
     // Check for shutdown
-    extern volatile int shutdown_requested;
+    extern int shutdown_requested;
     if (shutdown_requested)
     {
         uv_timer_stop(&pg->timer);
@@ -483,7 +483,7 @@ static void on_poll(uv_poll_t *handle, int status, int events)
     pg_async_t *pg = (pg_async_t *)handle->data;
 
     // Check for shutdown
-    extern volatile int shutdown_requested;
+    extern int shutdown_requested;
     if (shutdown_requested)
     {
         uv_poll_stop(&pg->poll);
